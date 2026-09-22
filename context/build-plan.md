@@ -48,9 +48,9 @@ Out: React, Vite, Recharts, Redis, npm UI apps, Chrome/HTML→PDF.
 
 ### Phase 1 — Local test server
 
-- [ ] Bundled HTTP target (`:8081`): `GET /api/test`, `GET /api/slow`
-- [ ] Optional artificial work / sleep so load is measurable
-- [ ] Backend allowlist: only localhost / compose service name
+- [x] Bundled HTTP target (`:8081`): `GET /api/test`, `GET /api/slow`
+- [x] Optional artificial work / sleep so load is measurable
+- [x] Backend allowlist: only localhost / compose service name
 
 **Done when:** `curl` to test server returns JSON; external hosts rejected by config.
 
