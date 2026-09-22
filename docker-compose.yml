@@ -10,12 +10,17 @@ services:
       WEB_DIR: "/app/web"
       # Reserved for Phase 4 (Mongo wiring). Unused in Phase 0.
       MONGO_URI: "mongodb://mongodb:27017/ddoslab"
+      # Phase 2: base URL workers hit (compose service name; local dev
+      # defaults to http://localhost:8081 when unset).
+      TARGET_BASE_URL: "http://test-server:8081"
     volumes:
       # Live-edit static UI without rebuilding during dev.
       - ./web:/app/web:ro
     depends_on:
       mongodb:
         condition: service_healthy
+      test-server:
+        condition: service_started
 
   test-server:
     build:

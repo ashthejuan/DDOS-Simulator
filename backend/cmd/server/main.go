@@ -1,7 +1,7 @@
-// Command server is the DDoSLab Phase 0 skeleton API.
+// Command server is the DDoSLab API.
 //
-// It serves the static Oat UI from web/ and exposes GET /api/health.
-// Listens on :8080 (override with PORT env).
+// It serves the static Oat UI from web/, exposes GET /api/health and the
+// experiment API (Phase 2). Listens on :8080 (override with PORT env).
 package main
 
 import (
@@ -9,6 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"ddoslab/backend/internal/experiment"
+	"ddoslab/backend/internal/server"
 )
 
 func main() {
@@ -25,6 +28,10 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
+
+	// Experiment API (Phase 2): workers hit TARGET_BASE_URL (test-server).
+	svc := experiment.NewService(server.AllowedHostsFromEnv())
+	experiment.NewHandler(svc).RegisterRoutes(mux)
 
 	// Static UI: served from web/ at /. Must be registered last (catch-all).
 	fileServer := http.FileServer(http.Dir(webDir))

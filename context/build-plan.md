@@ -58,11 +58,11 @@ Out: React, Vite, Recharts, Redis, npm UI apps, Chrome/HTML→PDF.
 
 ### Phase 2 — Experiment API + workers
 
-- [ ] Models: experiment config + status
-- [ ] `POST /api/experiments` → start worker pool (goroutines + `context`)
-- [ ] `POST /api/experiments/:id/stop`
-- [ ] `GET /api/experiments`, `GET /api/experiments/:id`
-- [ ] Workers: duration, RPS target, concurrency; HTTP client timeouts
+- [x] Models: experiment config + status
+- [x] `POST /api/experiments` → start worker pool (goroutines + `context`)
+- [x] `POST /api/experiments/:id/stop`
+- [x] `GET /api/experiments`, `GET /api/experiments/:id`
+- [x] Workers: duration, RPS target, concurrency; HTTP client timeouts
 
 **Done when:** Create experiment → workers hit local test server → stop cleanly.
 
