@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,25 +16,48 @@ import (
 	"ddoslab/backend/internal/server"
 )
 
-// Service owns the in-memory experiment registry (Mongo persistence
-// arrives in Phase 4) and runs worker pools against the test server.
+// Service owns the in-memory experiment registry and runs worker pools
+// against the test server. A Store (Phase 4, nil = disabled) persists
+// finished runs and supplies history across restarts.
 type Service struct {
 	mu          sync.RWMutex
 	experiments map[string]*run
 	allowed     []string
 	client      *http.Client
+	store       Store
+	stats       func() server.ProcStats
 }
 
 type run struct {
 	exp     Experiment
 	metrics Metrics
+	final   *Result
 	cancel  context.CancelFunc
 	done    chan struct{}
 }
 
+// Result bundles an experiment with its metrics view and target-side
+// telemetry. Historical marks store-loaded results (post-restart reads).
+type Result struct {
+	Exp            Experiment
+	Metrics        View
+	CPUPercent     *float64
+	MemoryRSSBytes *int64
+	Historical     bool
+}
+
+// Store persists finished results and serves history. All methods must be
+// safe for concurrent use.
+type Store interface {
+	SaveResult(ctx context.Context, r Result) error
+	LoadResult(ctx context.Context, id string) (Result, error)
+	History(ctx context.Context) ([]Result, error)
+}
+
 // NewService builds a Service. allowedHosts gates target URLs (see
-// server.AllowedTarget); pass nil to use server.DefaultAllowedHosts.
-func NewService(allowedHosts []string) *Service {
+// server.AllowedTarget, nil = defaults); store persists finished runs
+// (nil = in-memory only).
+func NewService(allowedHosts []string, store Store) *Service {
 	if allowedHosts == nil {
 		allowedHosts = server.DefaultAllowedHosts
 	}
@@ -41,7 +65,28 @@ func NewService(allowedHosts []string) *Service {
 		experiments: make(map[string]*run),
 		allowed:     allowedHosts,
 		client:      &http.Client{Timeout: 10 * time.Second},
+		store:       store,
+		stats:       defaultStatsProbe,
 	}
+}
+
+// defaultStatsProbe fetches the test-server's self telemetry. Any failure
+// yields empty stats — telemetry must never break the caller.
+func defaultStatsProbe() server.ProcStats {
+	client := &http.Client{Timeout: time.Second}
+	res, err := client.Get(TargetBaseURL() + "/api/stats")
+	if err != nil {
+		return server.ProcStats{}
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return server.ProcStats{}
+	}
+	var st server.ProcStats
+	if err := json.NewDecoder(res.Body).Decode(&st); err != nil {
+		return server.ProcStats{}
+	}
+	return st
 }
 
 // Create validates cfg, resolves the server-side target URL, registers the
@@ -84,12 +129,12 @@ func (s *Service) Stop(id string) (*Experiment, error) {
 	r, ok := s.experiments[id]
 	s.mu.RUnlock()
 	if !ok {
-		return nil, errNotFound{id}
+		return nil, ErrNotFound{ID: id}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if r.exp.Status != StatusRunning {
-		return nil, errConflict{fmt.Sprintf("experiment %s is %s", id, r.exp.Status)}
+		return nil, ErrConflict{Msg: fmt.Sprintf("experiment %s is %s", id, r.exp.Status)}
 	}
 	// Mark stopped synchronously so the response reflects the stop;
 	// the worker loop exits on ctx.Done and finish() becomes a no-op.
@@ -100,24 +145,47 @@ func (s *Service) Stop(id string) (*Experiment, error) {
 	return s.snapshotLocked(r), nil
 }
 
-// Get returns a copy of one experiment.
+// Get returns one experiment: live copy, else stored history (post-restart).
 func (s *Service) Get(id string) (*Experiment, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	r, ok := s.experiments[id]
-	if !ok {
-		return nil, errNotFound{id}
+	s.mu.RUnlock()
+	if ok {
+		return s.snapshot(r), nil
 	}
-	return s.snapshotLocked(r), nil
+	if s.store == nil {
+		return nil, ErrNotFound{ID: id}
+	}
+	res, err := s.store.LoadResult(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+	return &res.Exp, nil
 }
 
-// List returns copies of all experiments, newest first.
-func (s *Service) List() []Experiment {
+// List returns in-memory experiments unioned with stored history
+// (in-memory wins on ID conflict), newest first. Store failures degrade
+// to in-memory only and are logged.
+func (s *Service) List(ctx context.Context) []Experiment {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
+	seen := make(map[string]bool, len(s.experiments))
 	out := make([]Experiment, 0, len(s.experiments))
-	for _, r := range s.experiments {
+	for id, r := range s.experiments {
+		seen[id] = true
 		out = append(out, *s.snapshotLocked(r))
+	}
+	s.mu.RUnlock()
+
+	if s.store != nil {
+		history, err := s.store.History(ctx)
+		if err != nil {
+			log.Printf("history unavailable, serving in-memory only: %v", err)
+		}
+		for _, h := range history {
+			if !seen[h.Exp.ID] {
+				out = append(out, h.Exp)
+			}
+		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
 	return out
@@ -173,9 +241,21 @@ loop:
 	close(tokens)
 	wg.Wait()
 
-	s.mu.RLock()
+	// Workers drained: counters are final. Capture, persist, then report.
+	final := s.finalize(r)
+	if s.store != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := s.store.SaveResult(ctx, final); err != nil {
+			// Graceful degradation: the run is complete in memory;
+			// history just won't survive a restart.
+			log.Printf("persist experiment %s failed (in-memory copy kept): %v", r.exp.ID, err)
+		}
+		cancel()
+	}
+	s.mu.Lock()
+	r.final = &final
 	status := r.exp.Status
-	s.mu.RUnlock()
+	s.mu.Unlock()
 	log.Printf("experiment %s %s: total=%d ok=%d fail=%d",
 		r.exp.ID, status,
 		atomic.LoadInt64(&r.exp.TotalRequests),
@@ -183,7 +263,19 @@ loop:
 		atomic.LoadInt64(&r.exp.FailedRequests))
 }
 
-// fire performs one request and bumps the atomic counters.
+// finalize builds the immutable end-of-run result (snapshot + view +
+// target telemetry). Call after workers drain.
+func (s *Service) finalize(r *run) Result {
+	exp := s.snapshot(r)
+	st := s.stats()
+	return Result{
+		Exp:            *exp,
+		Metrics:        r.metrics.Snapshot(),
+		CPUPercent:     st.CPUPercent,
+		MemoryRSSBytes: st.MemoryRSSBytes,
+	}
+}
+
 // fire performs one request, bumps the atomic counters and records the
 // outcome (status code 0 = no response: timeout / connection error).
 func (s *Service) fire(ctx context.Context, r *run) {
@@ -244,16 +336,49 @@ func (s *Service) snapshotLocked(r *run) *Experiment {
 	}
 }
 
-// Snapshot returns the experiment copy plus its computed metrics view.
-func (s *Service) Snapshot(id string) (*Experiment, View, error) {
+// Metrics returns the live result for a running experiment (fresh target
+// probe) or the stored/final result for a finished one. Post-restart,
+// finished experiments resolve from the store.
+func (s *Service) Metrics(id string) (Result, error) {
 	s.mu.RLock()
 	r, ok := s.experiments[id]
 	s.mu.RUnlock()
-	if !ok {
-		return nil, View{}, errNotFound{id}
+	if ok {
+		s.mu.RLock()
+		finished := r.exp.Status != StatusRunning
+		final := r.final
+		s.mu.RUnlock()
+		if finished && final != nil {
+			return *final, nil
+		}
+		exp := s.snapshot(r)
+		st := s.stats()
+		return Result{
+			Exp:            *exp,
+			Metrics:        r.metrics.Snapshot(),
+			CPUPercent:     st.CPUPercent,
+			MemoryRSSBytes: st.MemoryRSSBytes,
+		}, nil
 	}
-	exp := s.snapshot(r)
-	return exp, r.metrics.Snapshot(), nil
+	if s.store == nil {
+		return Result{}, ErrNotFound{ID: id}
+	}
+	res, err := s.store.LoadResult(context.Background(), id)
+	if err != nil {
+		return Result{}, err
+	}
+	res.Historical = true
+	return res, nil
+}
+
+// Snapshot returns the experiment copy plus its computed metrics view.
+// Prefer Metrics for handler use (includes telemetry + history fallback).
+func (s *Service) Snapshot(id string) (*Experiment, View, error) {
+	res, err := s.Metrics(id)
+	if err != nil {
+		return nil, View{}, err
+	}
+	return &res.Exp, res.Metrics, nil
 }
 
 // Done returns a channel closed when the experiment finishes (for tests).
@@ -275,11 +400,12 @@ func newID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// errNotFound / errConflict let the handler map to 404 / 409.
-type errNotFound struct{ id string }
+// ErrNotFound / ErrConflict let the handler map to 404 / 409 and let the
+// database layer signal missing documents.
+type ErrNotFound struct{ ID string }
 
-func (e errNotFound) Error() string { return fmt.Sprintf("experiment %s not found", e.id) }
+func (e ErrNotFound) Error() string { return fmt.Sprintf("experiment %s not found", e.ID) }
 
-type errConflict struct{ msg string }
+type ErrConflict struct{ Msg string }
 
-func (e errConflict) Error() string { return e.msg }
+func (e ErrConflict) Error() string { return e.Msg }

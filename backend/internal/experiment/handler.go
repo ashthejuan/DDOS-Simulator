@@ -5,19 +5,16 @@ import (
 	"errors"
 	"net/http"
 	"time"
-
-	"ddoslab/backend/internal/server"
 )
 
-// Handler exposes the experiment REST API (Phases 2–3).
+// Handler exposes the experiment REST API (Phases 2–4).
 type Handler struct {
-	svc        *Service
-	statsProbe *http.Client
+	svc *Service
 }
 
 // NewHandler builds a Handler around svc.
 func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc, statsProbe: &http.Client{Timeout: 2 * time.Second}}
+	return &Handler{svc: svc}
 }
 
 // RegisterRoutes mounts the experiment endpoints on mux.
@@ -43,8 +40,8 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, exp)
 }
 
-func (h *Handler) list(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"experiments": h.svc.List()})
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"experiments": h.svc.List(r.Context())})
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -79,54 +76,34 @@ type MetricsResponse struct {
 }
 
 func (h *Handler) metrics(w http.ResponseWriter, r *http.Request) {
-	exp, view, err := h.svc.Snapshot(r.PathValue("id"))
+	res, err := h.svc.Metrics(r.PathValue("id"))
 	if err != nil {
 		writeServiceError(w, err)
 		return
 	}
 	end := time.Now().UTC()
-	if exp.CompletedAt != nil {
-		end = *exp.CompletedAt
+	if res.Exp.CompletedAt != nil {
+		end = *res.Exp.CompletedAt
 	}
-	stats := h.probeTargetStats()
 	writeJSON(w, http.StatusOK, MetricsResponse{
-		ExperimentID:       exp.ID,
-		Status:             exp.Status,
-		ElapsedSeconds:     end.Sub(exp.StartedAt).Seconds(),
-		View:               view,
-		CPUPercent:         stats.CPUPercent,
-		MemoryRSSBytes:     stats.MemoryRSSBytes,
-		SuccessfulRequests: exp.SuccessfulRequests,
-		FailedRequests:     exp.FailedRequests,
+		ExperimentID:       res.Exp.ID,
+		Status:             res.Exp.Status,
+		ElapsedSeconds:     end.Sub(res.Exp.StartedAt).Seconds(),
+		View:               res.Metrics,
+		CPUPercent:         res.CPUPercent,
+		MemoryRSSBytes:     res.MemoryRSSBytes,
+		SuccessfulRequests: res.Exp.SuccessfulRequests,
+		FailedRequests:     res.Exp.FailedRequests,
 	})
 }
 
-// probeTargetStats fetches the test-server's self telemetry. Any failure
-// (unreachable, timeout, bad JSON) yields empty stats — metrics must never
-// fail just because telemetry is unavailable.
-func (h *Handler) probeTargetStats() server.ProcStats {
-	res, err := h.statsProbe.Get(TargetBaseURL() + "/api/stats")
-	if err != nil {
-		return server.ProcStats{}
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return server.ProcStats{}
-	}
-	var st server.ProcStats
-	if err := json.NewDecoder(res.Body).Decode(&st); err != nil {
-		return server.ProcStats{}
-	}
-	return st
-}
-
 func writeServiceError(w http.ResponseWriter, err error) {
-	var nf errNotFound
+	var nf ErrNotFound
 	if errors.As(err, &nf) {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
-	var cf errConflict
+	var cf ErrConflict
 	if errors.As(err, &cf) {
 		writeError(w, http.StatusConflict, err.Error())
 		return

@@ -1,15 +1,20 @@
 // Command server is the DDoSLab API.
 //
 // It serves the static Oat UI from web/, exposes GET /api/health and the
-// experiment API (Phase 2). Listens on :8080 (override with PORT env).
+// experiment API (Phases 2–4). Listens on :8080 (override with PORT env).
+// MONGO_URI enables persistence (Phase 4); when unset or unreachable the
+// API runs in-memory only and logs a warning.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"ddoslab/backend/internal/database"
 	"ddoslab/backend/internal/experiment"
 	"ddoslab/backend/internal/server"
 )
@@ -29,8 +34,24 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	// Experiment API (Phase 2): workers hit TARGET_BASE_URL (test-server).
-	svc := experiment.NewService(server.AllowedHostsFromEnv())
+	// Experiment API: workers hit TARGET_BASE_URL (test-server).
+	// Persistence (Phase 4): connect when MONGO_URI is set; degrade to
+	// in-memory on any failure so the lab keeps working.
+	var store experiment.Store
+	if uri := os.Getenv("MONGO_URI"); uri != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		mongoStore, err := database.Connect(ctx, uri)
+		cancel()
+		if err != nil {
+			log.Printf("mongodb unavailable (%v); running in-memory only", err)
+		} else {
+			log.Printf("mongodb connected: %s", uri)
+			store = mongoStore
+		}
+	} else {
+		log.Print("MONGO_URI unset; running in-memory only")
+	}
+	svc := experiment.NewService(server.AllowedHostsFromEnv(), store)
 	experiment.NewHandler(svc).RegisterRoutes(mux)
 
 	// Static UI: served from web/ at /. Must be registered last (catch-all).

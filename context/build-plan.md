@@ -82,9 +82,9 @@ Out: React, Vite, Recharts, Redis, npm UI apps, Chrome/HTML→PDF.
 
 ### Phase 4 — MongoDB
 
-- [ ] Connect from Go; collections `experiments`, `metrics` (as in PRD)
-- [ ] Persist on complete/stop; list history on dashboard
-- [ ] Idempotent indexes if needed (`_id`, `started_at`)
+- [x] Connect from Go; collections `experiments`, `metrics` (as in PRD)
+- [x] Persist on complete/stop; list history on dashboard
+- [x] Idempotent indexes if needed (`_id`, `started_at`)
 
 **Done when:** Restart API → past experiments still listed.
 

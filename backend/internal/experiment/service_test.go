@@ -1,6 +1,7 @@
 package experiment
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -10,9 +11,9 @@ import (
 	"ddoslab/backend/internal/server"
 )
 
-// testTarget spins up the real Phase 1 test server and points the service
-// at it (127.0.0.1 is allowlisted). Returns the service and a hit counter.
-func testTarget(t *testing.T, allowed []string) (*Service, *atomic.Int64) {
+// useTestTarget spins up the real Phase 1 test server and points
+// TARGET_BASE_URL at it (127.0.0.1 is allowlisted). Returns hit counter.
+func useTestTarget(t *testing.T) *atomic.Int64 {
 	t.Helper()
 	var hits atomic.Int64
 	mux := server.NewMux(server.Config{})
@@ -25,7 +26,15 @@ func testTarget(t *testing.T, allowed []string) (*Service, *atomic.Int64) {
 	t.Cleanup(srv.Close)
 
 	t.Setenv("TARGET_BASE_URL", srv.URL)
-	return NewService(allowed), &hits
+	return &hits
+}
+
+// testTarget spins up the real Phase 1 test server and points the service
+// at it (127.0.0.1 is allowlisted). Returns the service and a hit counter.
+func testTarget(t *testing.T, allowed []string) (*Service, *atomic.Int64) {
+	t.Helper()
+	hits := useTestTarget(t)
+	return NewService(allowed, nil), hits
 }
 
 func countMiddleware(hits *atomic.Int64, next http.Handler) http.Handler {
@@ -145,7 +154,7 @@ func TestListNewestFirst(t *testing.T) {
 	b, _ := svc.Create(Config{Endpoint: "test", DurationSeconds: 60, RequestsPerSecond: 1, Workers: 1})
 	t.Cleanup(func() { _, _ = svc.Stop(a.ID); _, _ = svc.Stop(b.ID) })
 
-	list := svc.List()
+	list := svc.List(context.Background())
 	if len(list) != 2 || list[0].ID != b.ID || list[1].ID != a.ID {
 		t.Fatalf("want newest-first [%s %s], got %v", b.ID, a.ID, list)
 	}
