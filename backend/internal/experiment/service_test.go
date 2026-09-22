@@ -20,6 +20,7 @@ func testTarget(t *testing.T, allowed []string) (*Service, *atomic.Int64) {
 	wrapped.Handle("/api/test", countMiddleware(&hits, mux))
 	wrapped.Handle("/api/slow", countMiddleware(&hits, mux))
 	wrapped.Handle("/api/health", mux)
+	wrapped.Handle("/api/stats", mux)
 	srv := httptest.NewServer(wrapped)
 	t.Cleanup(srv.Close)
 

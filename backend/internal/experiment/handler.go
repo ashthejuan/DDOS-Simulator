@@ -4,15 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
+
+	"ddoslab/backend/internal/server"
 )
 
-// Handler exposes the experiment REST API (Phase 2).
+// Handler exposes the experiment REST API (Phases 2–3).
 type Handler struct {
-	svc *Service
+	svc        *Service
+	statsProbe *http.Client
 }
 
 // NewHandler builds a Handler around svc.
-func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
+func NewHandler(svc *Service) *Handler {
+	return &Handler{svc: svc, statsProbe: &http.Client{Timeout: 2 * time.Second}}
+}
 
 // RegisterRoutes mounts the experiment endpoints on mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -20,6 +26,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/experiments", h.list)
 	mux.HandleFunc("GET /api/experiments/{id}", h.get)
 	mux.HandleFunc("POST /api/experiments/{id}/stop", h.stop)
+	mux.HandleFunc("GET /api/experiments/{id}/metrics", h.metrics)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +63,61 @@ func (h *Handler) stop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, exp)
+}
+
+// MetricsResponse is the live poll payload: worker-side rates/latency plus
+// target-side process telemetry (null where unavailable).
+type MetricsResponse struct {
+	ExperimentID   string  `json:"experiment_id"`
+	Status         string  `json:"status"`
+	ElapsedSeconds float64 `json:"elapsed_seconds"`
+	View
+	CPUPercent         *float64 `json:"cpu_percent"`
+	MemoryRSSBytes     *int64   `json:"memory_rss_bytes"`
+	SuccessfulRequests int64    `json:"successful_requests"`
+	FailedRequests     int64    `json:"failed_requests"`
+}
+
+func (h *Handler) metrics(w http.ResponseWriter, r *http.Request) {
+	exp, view, err := h.svc.Snapshot(r.PathValue("id"))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	end := time.Now().UTC()
+	if exp.CompletedAt != nil {
+		end = *exp.CompletedAt
+	}
+	stats := h.probeTargetStats()
+	writeJSON(w, http.StatusOK, MetricsResponse{
+		ExperimentID:       exp.ID,
+		Status:             exp.Status,
+		ElapsedSeconds:     end.Sub(exp.StartedAt).Seconds(),
+		View:               view,
+		CPUPercent:         stats.CPUPercent,
+		MemoryRSSBytes:     stats.MemoryRSSBytes,
+		SuccessfulRequests: exp.SuccessfulRequests,
+		FailedRequests:     exp.FailedRequests,
+	})
+}
+
+// probeTargetStats fetches the test-server's self telemetry. Any failure
+// (unreachable, timeout, bad JSON) yields empty stats — metrics must never
+// fail just because telemetry is unavailable.
+func (h *Handler) probeTargetStats() server.ProcStats {
+	res, err := h.statsProbe.Get(TargetBaseURL() + "/api/stats")
+	if err != nil {
+		return server.ProcStats{}
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return server.ProcStats{}
+	}
+	var st server.ProcStats
+	if err := json.NewDecoder(res.Body).Decode(&st); err != nil {
+		return server.ProcStats{}
+	}
+	return st
 }
 
 func writeServiceError(w http.ResponseWriter, err error) {

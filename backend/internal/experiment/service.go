@@ -25,9 +25,10 @@ type Service struct {
 }
 
 type run struct {
-	exp    Experiment
-	cancel context.CancelFunc
-	done   chan struct{}
+	exp     Experiment
+	metrics Metrics
+	cancel  context.CancelFunc
+	done    chan struct{}
 }
 
 // NewService builds a Service. allowedHosts gates target URLs (see
@@ -183,16 +184,21 @@ loop:
 }
 
 // fire performs one request and bumps the atomic counters.
+// fire performs one request, bumps the atomic counters and records the
+// outcome (status code 0 = no response: timeout / connection error).
 func (s *Service) fire(ctx context.Context, r *run) {
+	start := time.Now()
 	atomic.AddInt64(&r.exp.TotalRequests, 1)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.exp.TargetURL, nil)
 	if err != nil {
 		atomic.AddInt64(&r.exp.FailedRequests, 1)
+		r.metrics.Record(0, time.Since(start))
 		return
 	}
 	res, err := s.client.Do(req)
 	if err != nil {
 		atomic.AddInt64(&r.exp.FailedRequests, 1)
+		r.metrics.Record(0, time.Since(start))
 		return
 	}
 	defer res.Body.Close()
@@ -202,6 +208,7 @@ func (s *Service) fire(ctx context.Context, r *run) {
 	} else {
 		atomic.AddInt64(&r.exp.FailedRequests, 1)
 	}
+	r.metrics.Record(res.StatusCode, time.Since(start))
 }
 
 func (s *Service) finish(r *run, status string) {
@@ -235,6 +242,18 @@ func (s *Service) snapshotLocked(r *run) *Experiment {
 		SuccessfulRequests: atomic.LoadInt64(&r.exp.SuccessfulRequests),
 		FailedRequests:     atomic.LoadInt64(&r.exp.FailedRequests),
 	}
+}
+
+// Snapshot returns the experiment copy plus its computed metrics view.
+func (s *Service) Snapshot(id string) (*Experiment, View, error) {
+	s.mu.RLock()
+	r, ok := s.experiments[id]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, View{}, errNotFound{id}
+	}
+	exp := s.snapshot(r)
+	return exp, r.metrics.Snapshot(), nil
 }
 
 // Done returns a channel closed when the experiment finishes (for tests).

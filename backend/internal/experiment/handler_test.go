@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testHandler(t *testing.T) (*Handler, *Service) {
@@ -22,6 +23,63 @@ func decodeBody(t *testing.T, res *http.Response, v any) {
 	defer res.Body.Close()
 	if err := json.NewDecoder(res.Body).Decode(v); err != nil {
 		t.Fatalf("decode: %v", err)
+	}
+}
+
+func TestHTTPMetricsLive(t *testing.T) {
+	h, svc := testHandler(t)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	res := doRequest(t, mux, "POST", "/api/experiments",
+		`{"endpoint":"test","duration_seconds":60,"requests_per_second":20,"workers":2}`)
+	var created Experiment
+	decodeBody(t, res, &created)
+	t.Cleanup(func() { _, _ = svc.Stop(created.ID) })
+
+	time.Sleep(2 * time.Second) // ~40 reqs @ 20rps; 5s window => RPS ≈ 8
+
+	res = doRequest(t, mux, "GET", "/api/experiments/"+created.ID+"/metrics", "")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("metrics: got %d, want 200", res.StatusCode)
+	}
+	var m MetricsResponse
+	decodeBody(t, res, &m)
+
+	if m.ExperimentID != created.ID || m.Status != StatusRunning {
+		t.Fatalf("identity: %+v", m)
+	}
+	if m.TotalRequests < 30 {
+		t.Fatalf("total=%d, want >= 30 after ~2s @ 20rps", m.TotalRequests)
+	}
+	if m.StatusCodes["200"] != m.TotalRequests {
+		t.Fatalf("codes=%v total=%d", m.StatusCodes, m.TotalRequests)
+	}
+	if m.RPS < 5 || m.RPS > 15 {
+		t.Fatalf("rps=%v, want ~8 (40 reqs in 5s window)", m.RPS)
+	}
+	if m.AvgLatencyMs <= 0 || m.P50LatencyMs <= 0 || m.P95LatencyMs <= 0 || m.P99LatencyMs <= 0 {
+		t.Fatalf("non-positive latency: %+v", m)
+	}
+	if m.Samples != int(m.TotalRequests) {
+		t.Fatalf("samples=%d total=%d", m.Samples, m.TotalRequests)
+	}
+	if m.ElapsedSeconds <= 0 {
+		t.Fatalf("elapsed=%v", m.ElapsedSeconds)
+	}
+	// Stats probe hits the stub test-server: shape present (values may be
+	// null on darwin, populated on Linux) — assert only that we got here.
+}
+
+func TestHTTPMetricsUnknown(t *testing.T) {
+	h, _ := testHandler(t)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	res := doRequest(t, mux, "GET", "/api/experiments/nope/metrics", "")
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("got %d, want 404", res.StatusCode)
 	}
 }
 

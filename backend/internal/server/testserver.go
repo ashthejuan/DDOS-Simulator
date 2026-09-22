@@ -38,6 +38,11 @@ func NewMux(cfg Config) *http.ServeMux {
 		})
 	})
 
+	// Crude self telemetry for Phase 3 (nulls where /proc is absent).
+	mux.HandleFunc("GET /api/stats", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, CurrentStats())
+	})
+
 	return mux
 }
 

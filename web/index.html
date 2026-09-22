@@ -18,10 +18,11 @@
 
   <main>
     <section>
-      <h2>Phase 0 — Skeleton ✓</h2>
+      <h2>Status ✓</h2>
       <p>
         Go API on <code>:8080</code> is serving this Oat-styled page.
-        Phases 1–6 will add the test server, workers, metrics, MongoDB, full UI &amp; PDF reports.
+        Live: test server, experiment workers, and metrics polling.
+        Still ahead: MongoDB, full UI screens, defense mode &amp; PDF reports.
       </p>
       <p>
         API health: <output id="health-status"><span data-loading>checking…</span></output>
@@ -30,11 +31,30 @@
     </section>
 
     <section>
+      <h2>Live metrics (Phase 3)</h2>
+      <p>
+        <label for="live-id">Experiment ID</label>
+        <input id="live-id" name="live-id" type="text" size="20" placeholder="paste id, or leave blank for latest running" />
+        <button id="live-toggle" type="button">Start live view</button>
+      </p>
+      <table id="live-table" hidden>
+        <tbody>
+          <tr><th scope="row">Status</th><td><output id="m-status">—</output></td></tr>
+          <tr><th scope="row">RPS</th><td><output id="m-rps">—</output></td></tr>
+          <tr><th scope="row">Requests (ok / fail)</th><td><output id="m-reqs">—</output></td></tr>
+          <tr><th scope="row">Latency avg / P50 / P95 / P99 (ms)</th><td><output id="m-lat">—</output></td></tr>
+          <tr><th scope="row">Target CPU / RSS</th><td><output id="m-sys">—</output></td></tr>
+        </tbody>
+      </table>
+      <p><small id="live-note">Polls every 1.5s while running. Full dashboard arrives in Phase 5.</small></p>
+    </section>
+
+    <section>
       <h2>What's next</h2>
       <ul>
-        <li>Phase 1 — Local test server (<code>:8081</code>)</li>
-        <li>Phase 2 — Experiment API + workers</li>
-        <li>Phase 3 — Metrics + live poll</li>
+        <li>Phase 1 — Local test server (<code>:8081</code>) ✓</li>
+        <li>Phase 2 — Experiment API + workers ✓</li>
+        <li>Phase 4 — MongoDB persistence</li>
       </ul>
     </section>
   </main>

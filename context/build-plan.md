@@ -70,11 +70,11 @@ Out: React, Vite, Recharts, Redis, npm UI apps, Chrome/HTML→PDF.
 
 ### Phase 3 — Metrics + live poll
 
-- [ ] Counters: total / success / fail / status codes
-- [ ] Latency: avg, P50, P95, P99 (simple in-memory histogram or sorted samples)
-- [ ] Optional: CPU/memory of test process (keep crude if hard)
-- [ ] `GET /api/experiments/:id/metrics`
-- [ ] UI: poll every 1–2s while `running`
+- [x] Counters: total / success / fail / status codes
+- [x] Latency: avg, P50, P95, P99 (simple in-memory histogram or sorted samples)
+- [x] Optional: CPU/memory of test process (keep crude if hard)
+- [x] `GET /api/experiments/:id/metrics`
+- [x] UI: poll every 1–2s while `running`
 
 **Done when:** Live page updates RPS / latency / errors during a run.
 
