@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDoSLab — Local Traffic Lab</title>
+  <link rel="stylesheet" href="/vendor/oat.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <script src="/vendor/oat.min.js" defer></script>
+  <script src="/js/api.js" defer></script>
+  <script src="/js/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>DDoSLab</h1>
+    <p>Controlled local traffic experiments. Learn Go concurrency, metrics &amp; defense.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Phase 0 — Skeleton ✓</h2>
+      <p>
+        Go API on <code>:8080</code> is serving this Oat-styled page.
+        Phases 1–6 will add the test server, workers, metrics, MongoDB, full UI &amp; PDF reports.
+      </p>
+      <p>
+        API health: <output id="health-status"><span data-loading>checking…</span></output>
+        <button id="health-retry" type="button">Recheck</button>
+      </p>
+    </section>
+
+    <section>
+      <h2>What's next</h2>
+      <ul>
+        <li>Phase 1 — Local test server (<code>:8081</code>)</li>
+        <li>Phase 2 — Experiment API + workers</li>
+        <li>Phase 3 — Metrics + live poll</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <small>Local lab only — never point this at external hosts.</small>
+  </footer>
+</body>
+</html>

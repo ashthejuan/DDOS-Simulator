@@ -1,0 +1,18 @@
+/* Thin overrides on Oat variables — keep Oat defaults, tweak spacing/brand only. */
+:root {
+  --oat-accent: #2563eb;
+}
+
+body {
+  max-width: 72ch;
+  margin-inline: auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+header h1 {
+  margin-bottom: 0.25rem;
+}
+
+#health-status {
+  font-weight: 600;
+}
