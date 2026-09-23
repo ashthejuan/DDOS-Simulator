@@ -2,6 +2,9 @@ package report
 
 import (
 	"bytes"
+	"compress/zlib"
+	"io"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -43,6 +46,45 @@ func TestBuildProducesPDF(t *testing.T) {
 	}
 	if !bytes.HasPrefix(pdf, []byte("%PDF")) {
 		t.Fatal("output does not start with %PDF")
+	}
+}
+
+// TestBuildEncodesLatin1 ensures typographic chars (· — •) are written as
+// cp1252 single bytes for the WinAnsi core fonts, not raw UTF-8 (which
+// viewers render as mojibake like Â· / â€" / â€¢).
+func TestBuildEncodesLatin1(t *testing.T) {
+	pdf, err := Build(testInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	streamRe := regexp.MustCompile(`(?s)stream\r?\n(.*?)endstream`)
+	var text bytes.Buffer
+	for _, m := range streamRe.FindAllSubmatch(pdf, -1) {
+		zr, err := zlib.NewReader(bytes.NewReader(m[1]))
+		if err != nil {
+			continue // metadata etc.; only page streams matter
+		}
+		raw, err := io.ReadAll(zr)
+		zr.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		text.Write(raw)
+	}
+	body := text.Bytes()
+	for _, seq := range [][]byte{
+		{0xC2, 0xB7},       // · as UTF-8
+		{0xE2, 0x80, 0x94}, // — as UTF-8
+		{0xE2, 0x80, 0xA2}, // • as UTF-8
+	} {
+		if bytes.Contains(body, seq) {
+			t.Fatalf("page stream contains raw UTF-8 %x (mojibake in viewers)", seq)
+		}
+	}
+	for _, b := range []byte{0xB7, 0x97, 0x95} { // · — • as cp1252
+		if !bytes.Contains(body, []byte{b}) {
+			t.Fatalf("page stream missing cp1252 byte %x", b)
+		}
 	}
 }
 

@@ -51,34 +51,38 @@ func Build(res Input) ([]byte, error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(marginMM, 18, marginMM)
 	pdf.SetAutoPageBreak(true, 20)
-	pdf.SetTitle(fmt.Sprintf("DDoSLab Experiment Report — %s", res.ID), false)
+	// Core fonts (Helvetica) are WinAnsi-encoded, not UTF-8: translate
+	// characters like · — • to their cp1252 single-byte forms, otherwise
+	// viewers render each UTF-8 byte as a Latin-1 glyph (mojibake).
+	tr := pdf.UnicodeTranslatorFromDescriptor("cp1252")
+	pdf.SetTitle(tr(fmt.Sprintf("DDoSLab Experiment Report — %s", res.ID)), false)
 	pdf.SetAuthor("DDoSLab", false)
 
 	pdf.AddPage()
-	footer(pdf)
+	footer(pdf, tr)
 
-	coverStrip(pdf, res)
-	section(pdf, "Traffic configuration")
-	pairs(pdf, configRows(res))
+	coverStrip(pdf, tr, res)
+	section(pdf, tr, "Traffic configuration")
+	pairs(pdf, tr, configRows(res))
 	rule(pdf)
 
-	section(pdf, "Traffic")
-	pairs(pdf, trafficRows(res))
+	section(pdf, tr, "Traffic")
+	pairs(pdf, tr, trafficRows(res))
 	rule(pdf)
 
-	section(pdf, "Performance")
-	pairs(pdf, latencyRows(res))
+	section(pdf, tr, "Performance")
+	pairs(pdf, tr, latencyRows(res))
 	rule(pdf)
 
-	section(pdf, "Server impact")
-	pairs(pdf, serverRows(res))
+	section(pdf, tr, "Server impact")
+	pairs(pdf, tr, serverRows(res))
 	rule(pdf)
 
-	section(pdf, "Observations")
+	section(pdf, tr, "Observations")
 	for _, o := range Observe(res) {
 		pdf.SetFont("Helvetica", "", 10)
 		pdf.SetTextColor(30, 30, 30)
-		pdf.MultiCell(0, 5.5, "•  "+o, "", "L", false)
+		pdf.MultiCell(0, 5.5, tr("•  "+o), "", "L", false)
 		pdf.Ln(1)
 	}
 
@@ -223,44 +227,44 @@ func serverRows(res Input) [][2]string {
 
 // --- layout primitives ---
 
-func footer(pdf *fpdf.Fpdf) {
+func footer(pdf *fpdf.Fpdf, tr func(string) string) {
 	pdf.SetFooterFunc(func() {
 		pdf.SetY(-15)
 		pdf.SetFont("Helvetica", "", 8)
 		pdf.SetTextColor(130, 130, 130)
 		pdf.CellFormat(0, 5,
-			fmt.Sprintf("Local lab report — not for production use  ·  page %d", pdf.PageNo()),
+			tr(fmt.Sprintf("Local lab report — not for production use  ·  page %d", pdf.PageNo())),
 			"", 0, "C", false, 0, "")
 	})
 }
 
-func coverStrip(pdf *fpdf.Fpdf, res Input) {
+func coverStrip(pdf *fpdf.Fpdf, tr func(string) string, res Input) {
 	pdf.SetFillColor(accentR, accentG, accentB)
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFont("Helvetica", "B", 20)
 	pdf.CellFormat(0, 12, "DDoSLab Experiment Report", "", 1, "L", true, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.CellFormat(0, 7,
-		fmt.Sprintf("Experiment %s  ·  %s  ·  %s",
-			res.ID, res.StartedAt.Format(time.RFC3339), res.Status),
+		tr(fmt.Sprintf("Experiment %s  ·  %s  ·  %s",
+			res.ID, res.StartedAt.Format(time.RFC3339), res.Status)),
 		"", 1, "L", true, 0, "")
 	pdf.Ln(6)
 }
 
-func section(pdf *fpdf.Fpdf, title string) {
+func section(pdf *fpdf.Fpdf, tr func(string) string, title string) {
 	pdf.SetFont("Helvetica", "B", 13)
 	pdf.SetTextColor(accentR, accentG, accentB)
-	pdf.CellFormat(0, 8, title, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 8, tr(title), "", 1, "L", false, 0, "")
 	pdf.Ln(1)
 }
 
-func pairs(pdf *fpdf.Fpdf, rows [][2]string) {
+func pairs(pdf *fpdf.Fpdf, tr func(string) string, rows [][2]string) {
 	for _, r := range rows {
 		pdf.SetFont("Helvetica", "", 10)
 		pdf.SetTextColor(110, 110, 110)
-		pdf.CellFormat(62, 6.5, r[0], "", 0, "L", false, 0, "")
+		pdf.CellFormat(62, 6.5, tr(r[0]), "", 0, "L", false, 0, "")
 		pdf.SetTextColor(20, 20, 20)
-		pdf.CellFormat(0, 6.5, r[1], "", 1, "L", false, 0, "")
+		pdf.CellFormat(0, 6.5, tr(r[1]), "", 1, "L", false, 0, "")
 	}
 	pdf.Ln(2)
 }

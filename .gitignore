@@ -1,0 +1,9 @@
+# Downloaded experiment reports — local artifacts, not source.
+reports/
+*.pdf
+
+# OS / editor noise.
+.DS_Store
+
+# Local Go build output.
+backend/bin/

@@ -1,5 +1,4 @@
-// Report screen: on-page preview + Download PDF link (Phase 5).
-// PDF bytes land in Phase 6; the link targets that endpoint already.
+// Report screen: on-page preview + Download PDF link.
 (function () {
   const $ = (id) => document.getElementById(id);
   const fmt = (n, d) =>
