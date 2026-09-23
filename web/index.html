@@ -48,10 +48,10 @@
           <label for="f-workers">Concurrent workers (1–50)</label><br />
           <input id="f-workers" name="workers" type="number" min="1" max="50" value="10" required />
         </p>
-        <fieldset disabled>
-          <legend>Defense (Phase 6 — not wired yet)</legend>
-          <label><input type="radio" name="defense" checked /> Disabled</label>
-          <label><input type="radio" name="defense" /> Rate limiting</label>
+        <fieldset>
+          <legend>Defense</legend>
+          <label><input type="radio" name="defense" value="off" checked /> Disabled (baseline)</label>
+          <label><input type="radio" name="defense" value="on" /> Rate limiting (~50 req/s)</label>
         </fieldset>
         <p>
           <button type="submit">Start experiment</button>
@@ -74,13 +74,14 @@
             <th scope="col">Duration</th>
             <th scope="col">RPS</th>
             <th scope="col">Workers</th>
+            <th scope="col">Defense</th>
             <th scope="col">Status</th>
             <th scope="col">Requests</th>
             <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody id="exp-rows">
-          <tr><td colspan="8">Loading…</td></tr>
+          <tr><td colspan="9">Loading…</td></tr>
         </tbody>
       </table>
     </section>

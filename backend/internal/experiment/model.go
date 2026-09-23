@@ -26,11 +26,22 @@ const (
 // Config is the user-supplied traffic configuration.
 type Config struct {
 	// Endpoint is the test-server path choice: "test" or "slow".
-	Endpoint          string `json:"endpoint"`
-	DurationSeconds   int    `json:"duration_seconds"`
-	RequestsPerSecond int    `json:"requests_per_second"`
-	Workers           int    `json:"workers"`
+	Endpoint string `json:"endpoint"`
+	// Defense asks workers to flag requests for the test-server rate
+	// limiter (Phase 6). False = unprotected baseline run.
+	Defense           bool `json:"defense"`
+	DurationSeconds   int  `json:"duration_seconds"`
+	RequestsPerSecond int  `json:"requests_per_second"`
+	Workers           int  `json:"workers"`
 }
+
+// DefenseHeader is set by workers on every request when Config.Defense is
+// true. The test server rate-limits only flagged requests, so the same
+// deployment serves both baseline and defended runs.
+const DefenseHeader = "X-DDoSLab-Defense"
+
+// DefenseHeaderValue enables limiting; any other value means unprotected.
+const DefenseHeaderValue = "on"
 
 // Validate rejects unknown endpoints and out-of-range values.
 func (c Config) Validate() error {

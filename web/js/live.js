@@ -34,7 +34,8 @@
         window.DDoSLabAPI.getMetrics(currentId),
         window.DDoSLabAPI.getExperiment(currentId).catch(() => null),
       ]);
-      $("m-status").textContent = m.status;
+      const defense = exp && exp.config && exp.config.defense ? "defense on" : "defense off";
+      $("m-status").textContent = `${m.status} · ${defense}`;
       $("m-elapsed").textContent = `${fmt(m.elapsed_seconds, 0)}s`;
       $("m-rps").textContent = fmt(m.rps);
       $("m-reqs").textContent =

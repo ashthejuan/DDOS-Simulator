@@ -111,12 +111,12 @@ Minimal pages (semantic HTML + Oat; thin `app.css` overrides only):
 
 ### Phase 6 — Defense mode + PDF report
 
-- [ ] Rate limiting on test server (toggle via experiment flag)
-- [ ] Run same config with defense off vs on
-- [ ] Go PDF generator (Maroto or gofpdf): A4, clean typography, sectioned metrics, observations
-- [ ] `GET /api/experiments/:id/report.pdf` → `application/pdf`
-- [ ] Optional: `GET /api/experiments/:id/report` JSON for on-page preview
-- [ ] Optional: side-by-side compare of two experiment IDs (UI only; comparison PDF is V2)
+- [x] Rate limiting on test server (toggle via experiment flag)
+- [x] Run same config with defense off vs on
+- [x] Go PDF generator (go-pdf/fpdf, the maintained gofpdf fork): A4, clean typography, sectioned metrics, observations
+- [x] `GET /api/experiments/:id/report.pdf` → `application/pdf`
+- [ ] Optional: `GET /api/experiments/:id/report` JSON for on-page preview (skipped — page already composes `GET :id` + `:id/metrics`)
+- [x] Optional: side-by-side compare of two experiment IDs (UI only; comparison PDF is V2)
 
 **Done when:** Demo script in PRD §25 works end-to-end; PDF opens cleanly in a viewer.
 

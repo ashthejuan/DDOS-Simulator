@@ -287,6 +287,11 @@ func (s *Service) fire(ctx context.Context, r *run) {
 		r.metrics.Record(0, time.Since(start))
 		return
 	}
+	// Flag the request for the test-server limiter when this run is
+	// defended. Unflagged runs are never limited (baseline behavior).
+	if r.exp.Config.Defense {
+		req.Header.Set(DefenseHeader, DefenseHeaderValue)
+	}
 	res, err := s.client.Do(req)
 	if err != nil {
 		atomic.AddInt64(&r.exp.FailedRequests, 1)

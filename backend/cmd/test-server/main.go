@@ -30,10 +30,21 @@ func main() {
 		}
 	}
 
-	mux := server.NewMux(server.Config{SlowDelay: delay})
+	// Defense rate limit for flagged requests (Phase 6). Default 50/s;
+	// 0 disables limiting.
+	rateLimit := 50.0
+	if raw := os.Getenv("RATE_LIMIT_RPS"); raw != "" {
+		if n, err := strconv.ParseFloat(raw, 64); err == nil && n >= 0 {
+			rateLimit = n
+		} else {
+			log.Printf("invalid RATE_LIMIT_RPS=%q, using %v", raw, rateLimit)
+		}
+	}
+
+	mux := server.NewMux(server.Config{SlowDelay: delay, RateLimitRPS: rateLimit})
 
 	addr := ":" + port
-	log.Printf("ddoslab test-server listening on %s (slow delay: %v)", addr, delay)
+	log.Printf("ddoslab test-server listening on %s (slow delay: %v, rate limit: %v/s, 0=off)", addr, delay, rateLimit)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}

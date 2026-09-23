@@ -27,6 +27,7 @@
       <td>${cfg.duration_seconds ?? "—"}s</td>
       <td>${cfg.requests_per_second ?? "—"}</td>
       <td>${cfg.workers ?? "—"}</td>
+      <td>${cfg.defense ? "on" : "off"}</td>
       <td><span data-status="${e.status}">${e.status}</span></td>
       <td>${reqs}</td>
       <td class="actions">
@@ -43,7 +44,7 @@
       const data = await api().listExperiments();
       const exps = (data && data.experiments) || [];
       if (exps.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8">No experiments yet — start one above.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">No experiments yet — start one above.</td></tr>`;
       } else {
         tbody.innerHTML = exps
           .map((e) => `<tr>${rowHtml(e)}</tr>`)
@@ -54,7 +55,7 @@
         note.textContent = `${exps.length} experiment(s)${running ? ` · ${running} running` : ""}`;
       }
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="8">Failed to load: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9">Failed to load: ${err.message}</td></tr>`;
     }
   }
 
@@ -62,8 +63,10 @@
     ev.preventDefault();
     const out = document.getElementById("new-status");
     const form = ev.target;
+    const defense = new FormData(form).get("defense");
     const cfg = {
       endpoint: form.endpoint.value,
+      defense: defense === "on",
       duration_seconds: Number(form.duration_seconds.value),
       requests_per_second: Number(form.requests_per_second.value),
       workers: Number(form.workers.value),

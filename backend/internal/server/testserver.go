@@ -15,28 +15,39 @@ import (
 type Config struct {
 	// SlowDelay is how long GET /api/slow sleeps before responding.
 	SlowDelay time.Duration
+	// RateLimitRPS sustains this many flagged (defended) requests/second.
+	// <= 0 disables limiting (all requests pass; existing tests rely on this).
+	RateLimitRPS float64
 }
 
 // NewMux builds the test-server routes.
 func NewMux(cfg Config) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	var limiter *Limiter
+	if cfg.RateLimitRPS > 0 {
+		limiter = NewLimiter(cfg.RateLimitRPS, cfg.RateLimitRPS)
+	}
+
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	mux.HandleFunc("GET /api/test", func(w http.ResponseWriter, _ *http.Request) {
+	limited := func(h http.HandlerFunc) http.Handler {
+		return DefenseMiddleware(limiter, h)
+	}
+	mux.Handle("GET /api/test", limited(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
+	}))
 
-	mux.HandleFunc("GET /api/slow", func(w http.ResponseWriter, _ *http.Request) {
+	mux.Handle("GET /api/slow", limited(func(w http.ResponseWriter, _ *http.Request) {
 		start := time.Now()
 		time.Sleep(cfg.SlowDelay)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"status":   "ok",
 			"delay_ms": time.Since(start).Milliseconds(),
 		})
-	})
+	}))
 
 	// Crude self telemetry for Phase 3 (nulls where /proc is absent).
 	mux.HandleFunc("GET /api/stats", func(w http.ResponseWriter, _ *http.Request) {

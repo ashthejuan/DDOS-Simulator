@@ -43,8 +43,10 @@ Visual rules: A4, ≥16mm margins, restrained accent, tables over dense charts, 
 | Handler | experiment routes → stream PDF bytes |
 | UI | `web/report.html` — summary + Download PDF |
 
-Prefer Maroto or gofpdf; no headless browser.
+Implemented with `github.com/go-pdf/fpdf` (maintained gofpdf fork); no headless browser.
 
 ## Status
 
-Spec only — generator not implemented yet.
+Implemented (Phase 6): `backend/internal/report/` + `GET /api/experiments/:id/report.pdf`.
+Report input is a DTO (`report.Input`) mapped from the experiment result to
+avoid an import cycle. Defense observations key off HTTP 429 counts.

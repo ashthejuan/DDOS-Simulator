@@ -127,6 +127,49 @@ func TestHTTPCreateListGetStop(t *testing.T) {
 	}
 }
 
+func TestHTTPReportPDF(t *testing.T) {
+	h, svc := testHandler(t)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	res := doRequest(t, mux, "POST", "/api/experiments",
+		`{"endpoint":"test","defense":true,"duration_seconds":60,"requests_per_second":5,"workers":1}`)
+	var created Experiment
+	decodeBody(t, res, &created)
+	t.Cleanup(func() { _, _ = svc.Stop(created.ID) })
+
+	res = doRequest(t, mux, "GET", "/api/experiments/"+created.ID+"/report.pdf", "")
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("report.pdf: got %d, want 200", res.StatusCode)
+	}
+	if ct := res.Header.Get("Content-Type"); ct != "application/pdf" {
+		t.Fatalf("content-type=%q, want application/pdf", ct)
+	}
+	if cd := res.Header.Get("Content-Disposition"); cd == "" {
+		t.Fatal("missing Content-Disposition attachment")
+	}
+	var head [5]byte
+	if _, err := res.Body.Read(head[:]); err != nil {
+		t.Fatal(err)
+	}
+	if string(head[:]) != "%PDF-" {
+		t.Fatalf("magic=%q, want %%PDF-", head)
+	}
+}
+
+func TestHTTPReportPDFUnknown(t *testing.T) {
+	h, _ := testHandler(t)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	res := doRequest(t, mux, "GET", "/api/experiments/nope/report.pdf", "")
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("got %d, want 404", res.StatusCode)
+	}
+}
+
 func TestHTTPErrors(t *testing.T) {
 	h, _ := testHandler(t)
 	mux := http.NewServeMux()

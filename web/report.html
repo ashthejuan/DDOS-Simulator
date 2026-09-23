@@ -25,7 +25,7 @@
       <input id="report-id" type="text" size="28" placeholder="paste experiment id" />
       <button id="report-load" type="button">Load</button>
     </p>
-    <p><small id="report-note">On-page preview. PDF download is wired to the Phase 6 endpoint.</small></p>
+    <p><small id="report-note">On-page preview of the same data the PDF contains.</small></p>
   </header>
 
   <main>
@@ -65,11 +65,27 @@
       </table>
     </section>
 
+    <section aria-labelledby="cmp-h">
+      <h2 id="cmp-h">Compare (defense off vs on)</h2>
+      <p>
+        <label for="compare-id">Compare with experiment</label>
+        <input id="compare-id" type="text" size="28" placeholder="second experiment id" />
+        <button id="compare-load" type="button">Compare</button>
+        <small id="compare-note">Pick two runs with the same traffic config, one baseline and one defended.</small>
+      </p>
+      <table id="compare-table" hidden>
+        <thead>
+          <tr><th scope="col">Metric</th><th scope="col" id="cmp-a-h">A</th><th scope="col" id="cmp-b-h">B</th></tr>
+        </thead>
+        <tbody id="compare-rows"></tbody>
+      </table>
+    </section>
+
     <section aria-labelledby="dl-h">
       <h2 id="dl-h">Export</h2>
       <p>
         <a id="pdf-link" href="#">Download PDF</a><br />
-        <small>Serves <code>GET /api/experiments/:id/report.pdf</code> (lands in Phase 6; expect 404 until then).</small>
+        <small>Serves <code>GET /api/experiments/:id/report.pdf</code>.</small>
       </p>
       <p><a id="back-live" href="/live.html">Open live view</a> · <a href="/">Back to dashboard</a></p>
     </section>
