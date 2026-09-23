@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDoSLab — Live experiment</title>
+  <link rel="stylesheet" href="/vendor/oat.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <script src="/vendor/oat.min.js" defer></script>
+  <script src="/js/api.js" defer></script>
+  <script src="/js/charts.js" defer></script>
+  <script src="/js/live.js" defer></script>
+</head>
+<body>
+  <header>
+    <nav aria-label="Primary">
+      <a href="/">DDoSLab</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/live.html" aria-current="page"><strong>Live</strong></a>
+      <span aria-hidden="true"> · </span>
+      <a href="/report.html">Report</a>
+    </nav>
+    <h1>Live experiment</h1>
+    <p><small id="live-note">Polls metrics every 1.5s while running.</small></p>
+  </header>
+
+  <main>
+    <section aria-labelledby="pick-h">
+      <h2 id="pick-h">Experiment</h2>
+      <p>
+        <label for="live-id">Experiment ID</label>
+        <input id="live-id" type="text" size="28" placeholder="paste id, or leave blank for latest running" />
+        <button id="live-toggle" type="button">Start live view</button>
+        <button id="live-stop" type="button">Stop experiment</button>
+        <a id="live-report" href="/report.html">Open report</a>
+      </p>
+    </section>
+
+    <section aria-labelledby="cur-h">
+      <h2 id="cur-h">Current</h2>
+      <table id="live-table">
+        <tbody>
+          <tr><th scope="row">Status</th><td><output id="m-status">—</output></td></tr>
+          <tr><th scope="row">Elapsed</th><td><output id="m-elapsed">—</output></td></tr>
+          <tr><th scope="row">RPS</th><td><output id="m-rps">—</output></td></tr>
+          <tr><th scope="row">Requests (total · ok / fail)</th><td><output id="m-reqs">—</output></td></tr>
+          <tr><th scope="row">Latency avg / P50 / P95 / P99 (ms)</th><td><output id="m-lat">—</output></td></tr>
+          <tr><th scope="row">Target CPU / RSS</th><td><output id="m-sys">—</output></td></tr>
+          <tr><th scope="row">Status codes</th><td><output id="m-codes">—</output></td></tr>
+        </tbody>
+      </table>
+      <p>
+        <label for="meter-rps">RPS (vs target)</label><br />
+        <meter id="meter-rps" min="0" max="100" value="0">—</meter>
+        <output id="meter-rps-t">—</output>
+      </p>
+      <p>
+        <label for="meter-err">Error share</label><br />
+        <meter id="meter-err" min="0" max="1" value="0">—</meter>
+        <output id="meter-err-t">—</output>
+      </p>
+    </section>
+
+    <section aria-labelledby="trend-h">
+      <h2 id="trend-h">Trends</h2>
+      <h3>RPS over time</h3>
+      <svg id="spark-rps" role="img" aria-label="RPS history"></svg>
+      <h3>P95 latency (ms) over time</h3>
+      <svg id="spark-p95" role="img" aria-label="P95 latency history"></svg>
+    </section>
+  </main>
+
+  <footer>
+    <small><a href="/">← Back to dashboard</a></small>
+  </footer>
+</body>
+</html>

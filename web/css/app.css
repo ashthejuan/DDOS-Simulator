@@ -16,3 +16,63 @@ header h1 {
 #health-status {
   font-weight: 600;
 }
+
+/* Phase 5: keep Oat defaults; only layout helpers below. */
+nav {
+  margin-bottom: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 0.75rem 1.25rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  vertical-align: top;
+}
+
+td.actions {
+  white-space: nowrap;
+}
+
+td.actions a,
+td.actions button {
+  margin-right: 0.5rem;
+}
+
+meter {
+  width: min(100%, 28rem);
+  height: 1.1rem;
+}
+
+svg[id^="spark-"] {
+  width: 100%;
+  max-width: 40rem;
+  height: 5rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.5rem;
+  color: var(--oat-accent);
+}
+
+.spark-empty {
+  fill: currentColor;
+  opacity: 0.55;
+  font-size: 12px;
+}
+
+#new-form input,
+#new-form select {
+  max-width: 22rem;
+}
+
+#new-status,
+#list-note,
+#live-note,
+#report-note {
+  opacity: 0.85;
+}

@@ -101,9 +101,9 @@ Minimal pages (semantic HTML + Oat; thin `app.css` overrides only):
 | Live | `live.html?id=` | Poll metrics; meters + tiny SVG sparkline |
 | Report | `report.html?id=` | On-page summary + **Download PDF** |
 
-- [ ] `web/js/api.js` — fetch helpers
-- [ ] No SPA framework; multi-page or hash routes OK
-- [ ] Charts: Oat `<meter>` / `<progress>` + ~50-line SVG helper (no chart lib)
+- [x] `web/js/api.js` — fetch helpers
+- [x] No SPA framework; multi-page or hash routes OK
+- [x] Charts: Oat `<meter>` / `<progress>` + ~50-line SVG helper (no chart lib)
 
 **Done when:** Full flow works from browser with no Node install.
 

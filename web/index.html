@@ -3,64 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DDoSLab — Local Traffic Lab</title>
+  <title>DDoSLab — Dashboard</title>
   <link rel="stylesheet" href="/vendor/oat.min.css" />
   <link rel="stylesheet" href="/css/app.css" />
   <script src="/vendor/oat.min.js" defer></script>
   <script src="/js/api.js" defer></script>
-  <script src="/js/app.js" defer></script>
+  <script src="/js/dashboard.js" defer></script>
 </head>
 <body>
   <header>
+    <nav aria-label="Primary">
+      <a href="/" aria-current="page"><strong>DDoSLab</strong></a>
+      <span aria-hidden="true"> · </span>
+      <a href="/live.html">Live</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/report.html">Report</a>
+    </nav>
     <h1>DDoSLab</h1>
     <p>Controlled local traffic experiments. Learn Go concurrency, metrics &amp; defense.</p>
+    <p><small>API health: <output id="health-status">checking…</output>
+      <button id="health-retry" type="button">Recheck</button></small></p>
   </header>
 
   <main>
-    <section>
-      <h2>Status ✓</h2>
-      <p>
-        Go API on <code>:8080</code> is serving this Oat-styled page.
-        Live: test server, experiment workers, and metrics polling.
-        Still ahead: MongoDB, full UI screens, defense mode &amp; PDF reports.
-      </p>
-      <p>
-        API health: <output id="health-status"><span data-loading>checking…</span></output>
-        <button id="health-retry" type="button">Recheck</button>
-      </p>
+    <section aria-labelledby="new-h">
+      <h2 id="new-h">New experiment</h2>
+      <form id="new-form">
+        <p>
+          <label for="f-endpoint">Endpoint</label><br />
+          <select id="f-endpoint" name="endpoint">
+            <option value="test" selected>GET /api/test (fast)</option>
+            <option value="slow">GET /api/slow (~200ms)</option>
+          </select>
+        </p>
+        <p>
+          <label for="f-duration">Duration (seconds, 1–300)</label><br />
+          <input id="f-duration" name="duration_seconds" type="number" min="1" max="300" value="30" required />
+        </p>
+        <p>
+          <label for="f-rps">Requests/sec (1–1000)</label><br />
+          <input id="f-rps" name="requests_per_second" type="number" min="1" max="1000" value="100" required />
+        </p>
+        <p>
+          <label for="f-workers">Concurrent workers (1–50)</label><br />
+          <input id="f-workers" name="workers" type="number" min="1" max="50" value="10" required />
+        </p>
+        <fieldset disabled>
+          <legend>Defense (Phase 6 — not wired yet)</legend>
+          <label><input type="radio" name="defense" checked /> Disabled</label>
+          <label><input type="radio" name="defense" /> Rate limiting</label>
+        </fieldset>
+        <p>
+          <button type="submit">Start experiment</button>
+          <output id="new-status" role="status"></output>
+        </p>
+      </form>
     </section>
 
-    <section>
-      <h2>Live metrics (Phase 3)</h2>
+    <section aria-labelledby="list-h">
+      <h2 id="list-h">Experiments</h2>
       <p>
-        <label for="live-id">Experiment ID</label>
-        <input id="live-id" name="live-id" type="text" size="20" placeholder="paste id, or leave blank for latest running" />
-        <button id="live-toggle" type="button">Start live view</button>
+        <button id="refresh" type="button">Refresh</button>
+        <small id="list-note"></small>
       </p>
-      <table id="live-table" hidden>
-        <tbody>
-          <tr><th scope="row">Status</th><td><output id="m-status">—</output></td></tr>
-          <tr><th scope="row">RPS</th><td><output id="m-rps">—</output></td></tr>
-          <tr><th scope="row">Requests (ok / fail)</th><td><output id="m-reqs">—</output></td></tr>
-          <tr><th scope="row">Latency avg / P50 / P95 / P99 (ms)</th><td><output id="m-lat">—</output></td></tr>
-          <tr><th scope="row">Target CPU / RSS</th><td><output id="m-sys">—</output></td></tr>
+      <table id="exp-table">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Endpoint</th>
+            <th scope="col">Duration</th>
+            <th scope="col">RPS</th>
+            <th scope="col">Workers</th>
+            <th scope="col">Status</th>
+            <th scope="col">Requests</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="exp-rows">
+          <tr><td colspan="8">Loading…</td></tr>
         </tbody>
       </table>
-      <p><small id="live-note">Polls every 1.5s while running. Full dashboard arrives in Phase 5.</small></p>
-    </section>
-
-    <section>
-      <h2>What's next</h2>
-      <ul>
-        <li>Phase 1 — Local test server (<code>:8081</code>) ✓</li>
-        <li>Phase 2 — Experiment API + workers ✓</li>
-        <li>Phase 4 — MongoDB persistence</li>
-      </ul>
     </section>
   </main>
 
   <footer>
-    <small>Local lab only — never point this at external hosts.</small>
+    <small>Local lab only — targets are fixed to the bundled test server. Never point this at external hosts.</small>
   </footer>
 </body>
 </html>

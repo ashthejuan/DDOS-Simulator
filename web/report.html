@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDoSLab — Experiment report</title>
+  <link rel="stylesheet" href="/vendor/oat.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <script src="/vendor/oat.min.js" defer></script>
+  <script src="/js/api.js" defer></script>
+  <script src="/js/report.js" defer></script>
+</head>
+<body>
+  <header>
+    <nav aria-label="Primary">
+      <a href="/">DDoSLab</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/live.html">Live</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/report.html" aria-current="page"><strong>Report</strong></a>
+    </nav>
+    <h1>Experiment report</h1>
+    <p>
+      <label for="report-id">Experiment ID</label>
+      <input id="report-id" type="text" size="28" placeholder="paste experiment id" />
+      <button id="report-load" type="button">Load</button>
+    </p>
+    <p><small id="report-note">On-page preview. PDF download is wired to the Phase 6 endpoint.</small></p>
+  </header>
+
+  <main>
+    <section aria-labelledby="sum-h">
+      <h2 id="sum-h">Summary</h2>
+      <table>
+        <tbody id="sum-rows">
+          <tr><td>Load an experiment to see its summary.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="traf-h">
+      <h2 id="traf-h">Traffic</h2>
+      <table>
+        <tbody id="traffic-rows">
+          <tr><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="lat-h">
+      <h2 id="lat-h">Latency</h2>
+      <table>
+        <tbody id="latency-rows">
+          <tr><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="err-h">
+      <h2 id="err-h">Errors</h2>
+      <table>
+        <tbody id="error-rows">
+          <tr><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="dl-h">
+      <h2 id="dl-h">Export</h2>
+      <p>
+        <a id="pdf-link" href="#">Download PDF</a><br />
+        <small>Serves <code>GET /api/experiments/:id/report.pdf</code> (lands in Phase 6; expect 404 until then).</small>
+      </p>
+      <p><a id="back-live" href="/live.html">Open live view</a> · <a href="/">Back to dashboard</a></p>
+    </section>
+  </main>
+</body>
+</html>
