@@ -7,3 +7,9 @@ reports/
 
 # Local Go build output.
 backend/bin/
+
+# AAT-1 report artifacts (template, guidelines, generated report) — not source.
+AAT_Student_Submission_Guidelines.pdf
+AAT-1 Report - Cyber Hygiene Password Manager.pdf
+AAT-1 Report - DDoSLab Full Stack Simulator.docx
+*.docx
