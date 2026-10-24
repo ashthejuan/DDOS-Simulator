@@ -94,8 +94,6 @@ Each finished run gets an on-page report and a downloadable PDF report.
 
 ![Generated PDF report](screenshots/report-pdf.png)
 
-![GitHub repository](screenshots/github-repository.png)
-
 ## Learning Goals
 
 This is a study project first and a portfolio piece second. It deliberately exercises:
