@@ -81,7 +81,20 @@ limiter hold the server up.
 
 ## Screenshots
 
-[Add screenshots: live dashboard during a run, experiment history, and the generated PDF.]
+The Experiments page lists past runs with their configs and outcomes, and the Live view
+polls the metrics endpoint every second or two while an experiment runs.
+
+![Experiments dashboard](screenshots/experiments-dashboard.png)
+
+![Live experiment](screenshots/live-experiment.png)
+
+Each finished run gets an on-page report and a downloadable PDF report.
+
+![Experiment report page](screenshots/report-page.png)
+
+![Generated PDF report](screenshots/report-pdf.png)
+
+![GitHub repository](screenshots/github-repository.png)
 
 ## Learning Goals
 
